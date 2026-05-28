@@ -1,0 +1,1416 @@
+/* ===== Layout ===== */
+
+.app {
+  position: relative;
+  width: 100%;
+}
+
+/* Sticky 3D canvas — stays above scrolling content. High z-index so the
+   can(s) always render on top of section overlays (CTA + flavors). */
+.canvas-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  pointer-events: none;
+}
+
+.section {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  padding: 28px 40px 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+/* ===== Hero — scroll-pinned with 3 text panels =====
+   The hero is a 300vh container; .hero-pin sticks to the viewport top
+   throughout, so the photograph stays put while three text panels swap
+   in/out underneath it based on scroll position. After the section ends
+   the page flows naturally into bento.
+   IMPORTANT: no `overflow: hidden` on the section — that breaks sticky. */
+/* `.section.section--hero` — double-class specificity so the late
+   mobile `.section { padding: ... }` rule doesn't push the hero-pin
+   inward and leave a red gutter on either side of the photograph. */
+.section.section--hero {
+  color: var(--paper);
+  background: var(--red);
+  position: relative;
+  min-height: 300vh;
+  padding: 0;
+}
+
+.hero-pin {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden; /* contains the bg + transitions */
+  background: var(--red);
+  padding: 28px 40px 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+/* Cinematic reveal of the hero photograph — zooms out from a blurred,
+   desaturated start to the final clean image. Mimics a focus-pull / WebGL
+   intro without needing a shader. Plays once on first page load and stays
+   put through all 3 hero states + every infinite-scroll wrap. */
+/* Scroll-zoom wrapper. The scale is updated inline from JS each frame
+   as the user scrolls through the pinned hero. Promoted to its own
+   compositor layer (`will-change` + `translateZ(0)` baseline + hidden
+   backface) so the per-frame `scale3d` updates run on the GPU and
+   never trigger a layout/paint pass on the main thread — that's what
+   keeps the zoom feeling "smart" rather than laggy. */
+.hero-bg-zoom {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  transform-origin: center center;
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  /* No gradient overlay — must match .closer-heroback exactly so the
+     wrap-around shows pure photograph on both sides of the boundary. */
+  background: url("/hero-bg.png") center / cover no-repeat;
+  animation: heroBgReveal 1.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: opacity, filter, transform;
+}
+
+/* Single continuous interpolation — all properties animate together with the
+   same easing curve so there's no perceived phase-break/pause. `both` makes
+   the FROM state apply immediately, preventing the brief flash of the clean
+   image before the animation kicks in. */
+@keyframes heroBgReveal {
+  from {
+    opacity: 0;
+    filter: blur(38px) brightness(0.35) saturate(0.55);
+    transform: scale(1.16);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0px) brightness(1) saturate(1);
+    transform: scale(1);
+  }
+}
+
+/* Lift all hero content above the absolute bg layer. The content is
+   now nested inside .hero-pin (one level deeper than before). */
+.hero-pin > .hero-stage,
+.hero-pin > .meta {
+  position: relative;
+  z-index: 1;
+}
+
+/* Variant of .hero-stage used by hero states 1 and 2 — text splits into
+   left and right columns that flank the 3D can sitting at viewport
+   centre. The center gap is deliberately wide so the can has clear
+   space; each column carries a small label, a medium headline, and a
+   micro caption with a diamond accent. Adds editorial-style "annotation
+   around the subject" energy without blocking the mascot. */
+.hero-stage--split {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  /* Generous centre gap = clear space for the can */
+  gap: clamp(180px, 30vw, 560px);
+  align-items: center;
+}
+
+.hero-side {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 2.5vw, 36px);
+  max-width: 22ch;
+}
+.hero-side--left  { align-items: flex-start; text-align: left; }
+.hero-side--right { align-items: flex-end;   text-align: right; justify-self: end; }
+
+/* Top + bottom micro lines (label + caption) — uppercase, tight tracking */
+.hero-side__label,
+.hero-side__micro {
+  font-family: var(--sans);
+  font-size: clamp(10px, 0.9vw, 13px);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: rgba(244, 237, 224, 0.92);
+}
+
+/* Big middle text — smaller than the SPARKLING/BOOST display so it doesn't
+   overpower the can or push into the centre gap. Still display-weight type. */
+.hero-side__big {
+  font-family: var(--display);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: clamp(48px, 7vw, 140px);
+  line-height: 0.92;
+  letter-spacing: -0.018em;
+  color: var(--paper);
+}
+.hero-side--right .hero-side__big { text-align: right; }
+
+/* ----- Micro graphic accents (number, rule, diamond) ----- */
+.hero-side__num {
+  display: inline-block;
+  vertical-align: middle;
+  font-family: var(--display);
+  font-size: clamp(14px, 1.4vw, 22px);
+  letter-spacing: 0;
+  color: var(--paper);
+}
+.hero-side__rule {
+  display: inline-block;
+  vertical-align: middle;
+  width: clamp(20px, 3vw, 48px);
+  height: 1px;
+  background: rgba(244, 237, 224, 0.55);
+  margin: 0 10px;
+}
+.hero-side__diamond {
+  display: inline-block;
+  vertical-align: middle;
+  width: 6px;
+  height: 6px;
+  background: var(--paper);
+  transform: rotate(45deg);
+  margin: 0 10px 2px;
+}
+
+@media (max-width: 768px) {
+  .hero-stage--split {
+    grid-template-columns: 1fr;
+    gap: clamp(32px, 8vw, 64px);
+    align-content: center;
+  }
+  .hero-side--right { align-items: flex-start; text-align: left; justify-self: start; }
+  .hero-side--right .hero-side__big { text-align: left; }
+  .hero-side__big { font-size: clamp(36px, 11vw, 80px); }
+
+  /* Tighter horizontal padding so the photograph bleeds closer to the
+     screen edges and the headline can take up the full mobile width. */
+  .hero-pin { padding: 18px 18px 28px; gap: 16px; }
+  /* Section default — used by CTA, flavors header, c1, c2, closer.
+     Desktop's 40px gutter is too generous on a 375px viewport. */
+  .section { padding: 24px 18px 28px; }
+
+  /* Centre-stacked nav text ("SPARKLING REFRESHMENT / MADE TO MOVE")
+     is decorative — on mobile it just crowds the header between the
+     wordmark and the menu link. Hide it. */
+  .nav__center { display: none; }
+}
+
+/* `.section.section--about` — double-class specificity so this beats
+   the mobile `.section { padding: ... }` rule further down in the file.
+   The bento needs zero outer padding so the cells bleed to the screen
+   edges; the inner cells own all the gutters. */
+.section.section--about {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0;
+  gap: 0;
+}
+
+/* Scroll-pinned section — visually 100vh but takes 600vh of scroll so we
+   can cycle through 5 slides and finish with the centre-cell expansion. */
+.section--pinned {
+  display: block;
+  min-height: 600vh;
+  position: relative;
+  overflow: visible;
+}
+
+.bento-pin {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--ink);
+}
+
+.bento-pin .bento { flex: 1 1 auto; }
+
+/* ===== Section 3 · CTA — centred layout on cream =====
+   Cream/paper background, ink type. Centered massive "DRINK / THE SIGNAL."
+   headline, small tagline, two CTA buttons (solid ink + ghost ink) below. */
+.section--cta {
+  background: var(--paper);
+  color: var(--ink);
+  position: relative;
+  z-index: 1;
+  padding: 28px 40px 36px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.cta-stage {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 32px;
+}
+
+.display--cta {
+  font-family: var(--display);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: clamp(72px, 11vw, 220px);
+  line-height: 1.1;
+  letter-spacing: -0.018em;
+  color: var(--ink);
+}
+
+/* Staggered fade-up on the two CTA buttons once the section reveals */
+.cta-row--in .cta {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: ctaBtnIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: opacity, transform;
+}
+.cta-row--in .cta:nth-child(1) { animation-delay: 0.65s; }
+.cta-row--in .cta:nth-child(2) { animation-delay: 0.78s; }
+
+@keyframes ctaBtnIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cta-tagline {
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(10, 10, 10, 0.6);
+}
+
+.cta-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Buttons on cream:
+   - Solid .cta keeps the default ink fill + paper text (already high-contrast)
+   - Ghost is ink border + ink text — the BRAND.md default ghost variant */
+.cta--ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--ink);
+}
+
+.section--cta .nav { color: var(--ink); }
+.section--cta .meta { color: rgba(10, 10, 10, 0.6); }
+
+/* ===================================================================
+   ===== EDITORIAL BRIDGE SECTIONS — C1, C2 =========================
+   These two sections sit between Flavors and Closer:
+   - C1: press quotes (red bg + 4px ink gutter on top to match flavors gap)
+   - C2: stockists (cream split + city list + CTA pill)
+   All follow BRAND.md: Anton display, Hanken body, mask reveals, no
+   rounded corners, big type.
+   =================================================================== */
+
+/* ===== C1 · Press — ink editorial, three text quote columns ===== */
+/* Section background is ink (black) with cream type. Compact: no min
+   100vh, no flex:1 grid — section sizes to its content plus padding so
+   the bottom doesn't have empty space hanging below the quotes. */
+.section--c1 {
+  background: var(--ink);
+  color: var(--paper);
+  min-height: 0;
+  padding: clamp(48px, 5vw, 80px) clamp(24px, 4vw, 64px) clamp(56px, 6vw, 88px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(32px, 4vw, 56px);
+}
+.c1-header {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 2vw, 28px);
+  max-width: 56ch;
+}
+.c1-eyebrow {
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: rgba(244,237,224,0.78);
+}
+.c1-title {
+  font-family: var(--display);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: clamp(48px, 6vw, 120px);
+  line-height: 0.88;
+  letter-spacing: -0.018em;
+  color: var(--paper);
+}
+/* Three quote columns on the ink section, no card backgrounds, no grid
+   tint. Cards are pure text blocks — the first one's text starts at the
+   section's content edge so it aligns with the headline left edge.
+   No `flex: 1` — the grid sizes to its content, which keeps the section
+   compact rather than stretching it to fill leftover vertical space. */
+.c1-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(40px, 5vw, 88px);
+  background: transparent;
+}
+.c1-quote {
+  background: transparent;
+  /* Only vertical padding — horizontal padding would push the first
+     column's text in past the headline's left edge. The grid gap above
+     creates the spacing between columns. */
+  padding: clamp(16px, 2vw, 28px) 0;
+  display: flex;
+  flex-direction: column;
+  /* Anchor blockquote + cite to the top of the column, so the source
+     attribution sits directly under its testimony instead of being
+     pushed to the column's bottom by space-between. */
+  justify-content: flex-start;
+  gap: clamp(14px, 1.6vw, 22px);
+  opacity: 0;
+  transform: translateY(60px);
+  will-change: opacity, transform;
+  animation: flavorCardIn 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.c1-quote blockquote {
+  font-family: var(--display);
+  font-weight: 400;
+  text-transform: uppercase;
+  /* Smaller display size so each three-`<br/>`-segment quote actually
+     fits in three visual lines per column without wrapping a segment
+     onto a fourth line. */
+  font-size: clamp(22px, 2.2vw, 40px);
+  line-height: 1.0;
+  letter-spacing: -0.012em;
+  color: var(--paper);
+}
+.c1-quote cite {
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+  font-style: normal;
+  color: rgba(244,237,224,0.78);
+  /* Tightened so the source sits close to the quote it belongs to —
+     just a thin rule + a small breath of padding. */
+  padding-top: clamp(10px, 1.2vw, 14px);
+  border-top: 1px solid rgba(244,237,224,0.32);
+}
+@media (max-width: 768px) {
+  .c1-grid { grid-template-columns: 1fr; gap: clamp(28px, 6vw, 48px); }
+}
+
+/* ===== C2 · Stockists — cream, headline left + city list right + CTA ===== */
+.section--c2 {
+  background: var(--paper);
+  color: var(--ink);
+  min-height: 100vh;
+  padding: clamp(56px, 7vw, 96px) clamp(24px, 4vw, 64px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: clamp(40px, 5vw, 72px);
+}
+.c2-grid {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: clamp(32px, 5vw, 96px);
+  align-items: center;
+}
+.c2-text { display: flex; flex-direction: column; gap: clamp(20px, 3vw, 36px); }
+.c2-eyebrow {
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--muted-ink);
+}
+.display--stockists {
+  font-family: var(--display);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: clamp(64px, 11vw, 220px);
+  line-height: 0.86;
+  letter-spacing: -0.018em;
+  color: var(--ink);
+  text-align: left;
+}
+.c2-cities ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: clamp(28px, 3.4vw, 64px);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-align: right;
+}
+.c2-cities li { padding: clamp(4px, 0.6vw, 10px) 0; }
+.c2-footer { display: flex; justify-content: flex-end; }
+.cta.cta--ink {
+  background: var(--ink);
+  color: var(--paper);
+}
+@media (max-width: 768px) {
+  .c2-grid { grid-template-columns: 1fr; }
+  .c2-cities ul { text-align: left; }
+}
+
+/* ===== Section 4 · Flavor lineup — 4-column split ===== */
+.section--flavors {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0;
+  min-height: 75vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.flavors-header {
+  padding: clamp(56px, 7vw, 96px) clamp(24px, 4vw, 56px) clamp(28px, 4vw, 56px);
+  display: grid;
+  grid-template-columns: minmax(0, auto) 1fr;
+  gap: clamp(24px, 5vw, 64px);
+  align-items: end;
+}
+
+.flavors-eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted-paper);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.flavors-title {
+  font-family: var(--display);
+  font-size: clamp(48px, 7vw, 140px);
+  font-weight: 400;
+  line-height: 0.88;
+  text-transform: uppercase;
+  letter-spacing: -0.015em;
+  color: var(--paper);
+  text-align: right;
+}
+
+.flavors-grid {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  background: var(--ink);
+  min-height: 0;
+}
+
+.flavor {
+  padding: 24px 22px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 42vh;
+  position: relative;
+  overflow: hidden;
+  /* Hidden until the section enters view */
+  opacity: 0;
+  transform: translateY(60px);
+  will-change: opacity, transform;
+}
+
+/* Stagger-in once .section--flavors gets the .is-in class via IntersectionObserver */
+.section--flavors.is-in .flavor {
+  animation: flavorCardIn 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes flavorCardIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.flavor--lime       { background: #c4ff3d; color: var(--ink); }
+.flavor--grapefruit { background: #ff7aa3; color: var(--ink); }
+.flavor--berry      { background: var(--red); color: var(--ink); }
+.flavor--peach      { background: #ffc83d; color: var(--ink); }
+
+.flavor__num {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
+
+.flavor__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.flavor__name {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(36px, 3.6vw, 68px);
+  line-height: 0.9;
+  text-transform: uppercase;
+  letter-spacing: -0.012em;
+}
+
+.flavor__desc {
+  font-size: 13px;
+  line-height: 1.45;
+  max-width: 26ch;
+  opacity: 0.82;
+}
+
+.flavor__meta {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding-top: 14px;
+  border-top: 1px solid currentColor;
+  opacity: 0.7;
+}
+
+@media (max-width: 768px) {
+  .flavors-header {
+    grid-template-columns: 1fr;
+    padding: 40px 20px 24px;
+  }
+  .flavors-title { text-align: left; }
+  .flavors-grid { grid-template-columns: 1fr; }
+  .flavor { min-height: auto; }
+}
+
+/* ===== Section 5 · Closer — visually a second hero ===== */
+/* The closer's background IS the hero photograph. No gradient, no overlay,
+   no grain, no glow — those layers are intentionally retired. The whole
+   point of this section is to be visually identical to the hero so the
+   infinite-scroll wrap reads as one continuous shot, with only the text
+   content changing across the boundary. */
+/* Same specificity bump as the hero/about — the closer's hero-photo
+   background needs to bleed to the screen edges on mobile, which means
+   we can't let the late `.section { padding }` rule shove the content
+   inward. Padding here is for the text/meta, not the background image
+   (which is on the section element itself and covers the padding box). */
+.section.section--closer {
+  position: relative;
+  min-height: 100vh;
+  padding: 28px 40px 36px;
+  color: var(--paper);
+  overflow: hidden;
+  background: url("/hero-bg.png") center / cover no-repeat;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+/* ===== Closer overlay layers — retired ===== */
+/* These three classes used to layer a grain, a glow, and a masked-in hero
+   photo OVER a gradient backdrop. Now that the closer's own background IS
+   the hero photo (see .section--closer above), all three are intentionally
+   no-op'd. Left as `display: none` rather than removed from the JSX so the
+   <div>s can stay in the markup for future use without breaking layout. */
+.closer-grain,
+.closer-glow,
+.closer-heroback {
+  display: none;
+}
+
+/* Lift all content above grain + glow + heroback layers */
+.section--closer > .closer-stage,
+.section--closer > .meta {
+  position: relative;
+  z-index: 2;
+}
+
+/* Mirror .hero-stage EXACTLY — bottom-anchored, full width, no align-items.
+   This is what keeps the closer's "DRINK / SIGNAL" text in the same on-
+   screen position as the hero's "SPARKLING / BOOST", so when the infinite
+   scroll wraps, the text content swaps in place without visibly jumping
+   from middle to bottom (or vice versa). */
+.closer-stage {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-end;
+  position: relative;
+  padding: 0;
+  width: 100%;
+  gap: 0;
+}
+
+.closer-nav { color: var(--paper); }
+.closer-meta { color: rgba(244, 237, 224, 0.78); }
+
+@media (max-width: 768px) {
+  .section.section--closer { padding: 24px 20px 28px; }
+}
+
+/* ===== Bento grid — sharp corners, black gaps, SOMPOWER-style ===== */
+.bento {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 1fr 1.45fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 4px;
+  width: 100%;
+  min-height: 0;
+}
+
+.bento__cell {
+  position: relative;
+  overflow: hidden;
+  background: #1a1a1a;
+}
+
+.bento__cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ===== Middle cell — liquid cross-fade stack ===== */
+.bento__cell--m {
+  position: relative;
+  overflow: hidden;
+  /* Match the slide tones so any single-frame gap during a transition
+     blends with the photo rather than flashing the default dark grey
+     bento cell background. */
+  background: #2a1815;
+}
+
+/* Wrapper that takes the dolly-in zoom during expansion. The img stack
+   sits inside this wrapper so the cross-fade animation on each new image
+   doesn't fight the inline scale transform. */
+.bento__cell--m .m-zoom {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* M-cell image reel.
+   - Each slide lives inside a .m-img-slide wrapper that handles ONLY
+     the vertical translation (slide-in / push-out).
+   - The inner <img> handles the dolly-in scale during M-cell expansion
+     via inline style, kept separate from the translate so the two
+     transforms don't override each other.
+   - Because IN and OUT animate at the same speed with identical
+     easing, every intermediate frame keeps the cell fully covered —
+     no empty gap is ever exposed between the two.
+   - .bento__cell--m already has overflow:hidden, so the outgoing
+     image is invisibly clipped once it passes the top edge. */
+.bento__cell--m .m-img-slide {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  will-change: transform;
+}
+
+.bento__cell--m .m-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* No translate here — the wrapper owns vertical motion. Inline scale
+     is added during the M-cell expansion phase only. */
+}
+
+/* Up-reel: scrolling DOWN through bento. New image enters from below,
+   old image is pushed off the top. */
+.bento__cell--m .m-img-slide--in-up {
+  z-index: 2;
+  animation: mImgInUp 0.85s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+.bento__cell--m .m-img-slide--out-up {
+  z-index: 1;
+  animation: mImgOutUp 0.85s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+/* Down-reel: scrolling UP through bento. New image enters from above,
+   old image is pushed off the bottom — mirrors the user's scroll
+   direction so the reel always feels physically consistent. */
+.bento__cell--m .m-img-slide--in-down {
+  z-index: 2;
+  animation: mImgInDown 0.85s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+.bento__cell--m .m-img-slide--out-down {
+  z-index: 1;
+  animation: mImgOutDown 0.85s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+@keyframes mImgInUp   { from { transform: translateY(100%); }  to { transform: translateY(0%); } }
+@keyframes mImgOutUp  { from { transform: translateY(0%); }    to { transform: translateY(-100%); } }
+@keyframes mImgInDown { from { transform: translateY(-100%); } to { transform: translateY(0%); } }
+@keyframes mImgOutDown{ from { transform: translateY(0%); }    to { transform: translateY(100%); } }
+
+/* ===== M-cell post-expansion tagline ===== */
+.m-text {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8vh;
+  text-align: center;
+  z-index: 30;
+  color: var(--paper);
+  pointer-events: none;
+  text-shadow: 0 2px 22px rgba(0, 0, 0, 0.45);
+}
+
+.m-text__line {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(56px, 9vw, 180px);
+  line-height: 0.92;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--paper);
+}
+
+/* Three-line supporting body above the big tagline — all caps, tight
+   leading, smaller and quieter so it stays subordinate to the headline. */
+.m-text__body {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: clamp(13px, 1.05vw, 19px);
+  line-height: 1.02;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--paper);
+  margin: 0 0 clamp(18px, 2.2vw, 36px);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
+}
+
+/* ===== Line-by-line mask reveal ===== */
+.reveal {
+  overflow: hidden;
+  line-height: inherit;
+  /* Expand the clip area on TOP and BOTTOM so neither the top of capital
+     glyphs nor descenders get trimmed by the mask. Negative margin keeps
+     the layout / line-spacing identical to the un-padded version. */
+  padding-top: 0.16em;
+  padding-bottom: 0.18em;
+  margin-top: -0.16em;
+  margin-bottom: -0.18em;
+}
+
+.reveal__inner {
+  display: inline-block;
+  transform: translateY(130%);
+  animation: revealUp 0.85s cubic-bezier(0.62, 0, 0.18, 1) forwards;
+  will-change: transform;
+}
+
+.reveal__inner--accent {
+  color: var(--red);
+}
+
+@keyframes revealUp {
+  from { transform: translateY(110%); }
+  to   { transform: translateY(0%); }
+}
+
+/* ===== Per-letter mask reveal ===== */
+.masked-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.letter-reveal {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  line-height: inherit;
+  /* Expand the clip area so taller/wider glyphs (e.g. the diagonal of K)
+     aren't trimmed by the mask. Negative margin compensates so the visual
+     layout stays the same. */
+  padding: 0.06em 0.04em 0.14em;
+  margin: -0.06em -0.04em -0.14em;
+}
+
+.letter-reveal__inner {
+  display: inline-block;
+  transform: translateY(115%);
+  animation: revealUp 0.85s cubic-bezier(0.62, 0, 0.18, 1) forwards;
+  will-change: transform;
+  white-space: pre;
+}
+
+.rt-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  justify-content: space-between;
+}
+
+.bento__cell--lt { grid-column: 1; grid-row: 1; }
+.bento__cell--lb { grid-column: 1; grid-row: 2; }
+.bento__cell--m  { grid-column: 2; grid-row: 1 / span 2; }
+.bento__cell--rt { grid-column: 3; grid-row: 1; }
+.bento__cell--rb { grid-column: 3; grid-row: 2; }
+
+/* ===== Text cells ===== */
+.bento__cell--text {
+  padding: clamp(20px, 2.4vw, 40px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  /* Background + colour are set per-slide via inline style; transition
+     them smoothly so the swap reads as motion in the user's periphery
+     rather than a hard cut. Matches the ~0.4s window the text reveal
+     occupies, so the colour and text feel like one coordinated change. */
+  transition: background 0.45s ease, color 0.45s ease;
+}
+
+.bento__cell--text-paper {
+  background: var(--paper);
+  color: var(--ink);
+  justify-content: flex-end;
+}
+
+.bento__cell--text-warm {
+  background: var(--red);
+  color: var(--ink);
+}
+
+.bento__eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: currentColor;
+  opacity: 0.75;
+  font-weight: 600;
+}
+
+/* BIG typography for the top-left cell */
+.bento__title {
+  font-family: var(--display);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: clamp(48px, 6.5vw, 124px);
+  line-height: 0.88;
+  letter-spacing: -0.018em;
+  /* Inherit the cell's inline color so a dark-bg slide gets light text
+     automatically — the LT cell sets `color: slide.ltFg` on itself. */
+  color: inherit;
+  transition: color 0.45s ease;
+}
+
+.bento__title--accent {
+  color: var(--red);
+}
+
+/* Per-slide accent override for the bento title — the inline --accent-color
+   var on .bento__title is set per slide so the title's last line stays
+   legible against whichever background the LT cell currently has. */
+.bento__title .reveal__inner--accent {
+  color: var(--accent-color, var(--red));
+  transition: color 0.45s ease;
+}
+
+.bento__title-main {
+  white-space: pre-line;
+}
+
+/* SMALL typography for the top-right cell */
+.bento__body {
+  font-size: clamp(13px, 1vw, 16px);
+  line-height: 1.55;
+  /* Inherit from cell so dark-bg slides automatically get light body copy. */
+  color: inherit;
+  max-width: 36ch;
+  font-weight: 500;
+}
+
+.bento__mini-spec {
+  display: flex;
+  gap: clamp(20px, 2.4vw, 40px);
+  padding-top: 16px;
+  /* currentColor + low alpha so the divider tracks the cell's text colour. */
+  border-top: 1px solid currentColor;
+  border-top-color: color-mix(in srgb, currentColor 25%, transparent);
+}
+
+.bento__mini-spec dt {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: currentColor;
+  opacity: 0.65;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.bento__mini-spec dd {
+  font-family: var(--display);
+  font-size: clamp(20px, 2.2vw, 32px);
+  letter-spacing: 0;
+  color: inherit;
+  text-transform: uppercase;
+}
+
+@media (max-width: 768px) {
+  /* Mobile bento — a single column of three cells (title, image, body)
+     that fills exactly 100vh of the sticky bento-pin. The two decorative
+     corner photos (LB row + RB portrait) are hidden on mobile — at 375px
+     wide they're too small to read as content and just chew through
+     scroll-space without adding meaning. Keeping it to LT / M / RT
+     mirrors the desktop's three-up logic and gives the brand image (M)
+     50vh of dominance in the middle of the viewport.
+
+     The M cell's expansion-to-fullscreen still works because the JS
+     side (BentoSection getMGridPos / corner) detects mobile and
+     interpolates vertically instead of horizontally. */
+  .bento {
+    grid-template-columns: 1fr;
+    grid-template-rows: 25vh 50vh 25vh;
+    gap: 4px;
+  }
+  .bento__cell--lt { grid-column: 1; grid-row: 1; }
+  .bento__cell--m  { grid-column: 1; grid-row: 2; }
+  .bento__cell--rt { grid-column: 1; grid-row: 3; }
+  .bento__cell--lb,
+  .bento__cell--rb { display: none; }
+
+  /* Tighter padding inside text cells on mobile — desktop's clamp
+     baseline is fine but the bento cells are now only 25vh tall, so
+     give the text every pixel of width it can get. */
+  .bento__cell--text { padding: 18px 18px; gap: 10px; }
+
+  /* Shrink the LT title so two stacked lines + accent fit inside 25vh
+     without spilling out of the cell. Desktop's clamp tops out at 124px
+     which is way too big for a 25vh cell on a 375px viewport. */
+  .bento__title { font-size: clamp(36px, 11vw, 64px); }
+
+  /* Tighter body copy in RT cell — and drop the mini-spec to a tight
+     row that fits on one line if possible. */
+  .bento__body { font-size: 13px; line-height: 1.45; }
+  .bento__mini-spec { gap: 16px; padding-top: 10px; }
+  .bento__mini-spec dd { font-size: 18px; }
+
+  /* The post-expansion overlay text was tuned for desktop widths and
+     completely overflowed on mobile ("DRINK THE SIGNAL" was being
+     cropped). Shrink both the body lines and the tagline so they fit
+     comfortably with breathing room on either side. */
+  .m-text { bottom: 12vh; padding: 0 20px; }
+  .m-text__line { font-size: 38px; }
+  .m-text__body { font-size: 11px; margin-bottom: 16px; }
+}
+
+/* Section 2 uses dark base — nav + meta inherit paper from .section--about */
+
+/* ===== Illustrated background ===== */
+.illust-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.illust-bg__item {
+  position: absolute;
+  display: inline-block;
+  will-change: transform;
+  transform-origin: 50% 50%;
+  opacity: 0.92;
+}
+
+.illust-bg__item svg {
+  display: block;
+  /* nested animation runs inside the parallax-transformed wrapper */
+  animation-duration: 8s;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+
+/* Each motif gets its own ambient keyframe */
+.illust-bg__anim-float-a svg { animation-name: floatA; animation-duration: 9s; }
+.illust-bg__anim-float-b svg { animation-name: floatB; animation-duration: 11s; }
+.illust-bg__anim-float-c svg { animation-name: floatC; animation-duration: 13s; }
+.illust-bg__anim-sway svg    { animation-name: sway;   animation-duration: 7s; }
+.illust-bg__anim-spin-slow svg { animation-name: spinSlow; animation-duration: 28s; animation-timing-function: linear; }
+.illust-bg__anim-pulse svg   { animation-name: pulse;  animation-duration: 4s; }
+.illust-bg__anim-pulse-2 svg { animation-name: pulse;  animation-duration: 5.5s; animation-delay: -2s; }
+.illust-bg__anim-drift svg   { animation-name: drift;  animation-duration: 14s; }
+
+@keyframes floatA {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-22px) rotate(-6deg); }
+}
+@keyframes floatB {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50%      { transform: translate(14px, -16px) rotate(8deg); }
+}
+@keyframes floatC {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(-12px, -24px); }
+}
+@keyframes sway {
+  0%, 100% { transform: rotate(-4deg); }
+  50%      { transform: rotate(4deg); }
+}
+@keyframes spinSlow {
+  to { transform: rotate(360deg); }
+}
+@keyframes pulse {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.95; }
+  50%      { transform: scale(1.25) rotate(20deg); opacity: 0.55; }
+}
+@keyframes drift {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  50%      { transform: translateX(28px) rotate(-3deg); }
+}
+
+/* Make sure all about-section content sits ABOVE the illustrated layer */
+.section--about > .nav,
+.section--about > .about-grid,
+.section--about > .meta {
+  position: relative;
+  z-index: 2;
+}
+
+/* ===== Top nav row ===== */
+
+.nav {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 24px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Sticky top nav — pinned to the top of every section. No background, no
+   backdrop blur. mix-blend-mode: difference makes the text auto-adapt to
+   whatever's behind it (white on dark, dark on light), so it always reads. */
+.top-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 22px 40px;
+  color: #ffffff;
+  mix-blend-mode: difference;
+  background: transparent;
+  pointer-events: none;
+}
+
+.top-nav a { pointer-events: auto; }
+
+@media (max-width: 768px) {
+  .top-nav { padding: 14px 18px; }
+}
+
+.nav__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+}
+
+.nav__brand-mark {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.nav__center {
+  justify-self: center;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.nav__links {
+  display: flex;
+  gap: 28px;
+  justify-self: end;
+}
+
+.nav__links a {
+  position: relative;
+  padding-bottom: 2px;
+}
+
+.nav__links a:hover {
+  opacity: 0.7;
+}
+
+/* ===== Giant display headline ===== */
+
+.display {
+  font-family: var(--display);
+  font-weight: 400;
+  text-transform: uppercase;
+  line-height: 0.82;
+  letter-spacing: -0.005em;
+  color: inherit;
+  text-align: center;
+}
+
+.display--about {
+  font-size: clamp(80px, 13vw, 220px);
+  text-align: left;
+  letter-spacing: -0.01em;
+}
+
+/* ===== Stacked display: SPARKLING + BOOST anchored to the bottom ===== */
+
+.hero-stage {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-end;
+  position: relative;
+  padding: 0;
+  width: 100%;
+  gap: 0;
+}
+
+.display-stack {
+  font-family: var(--display);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: clamp(110px, 22vw, 440px);
+  line-height: 0.95;
+  letter-spacing: -0.018em;
+  color: var(--paper);
+  text-align: center;
+  user-select: none;
+  white-space: nowrap;
+  display: block;
+}
+
+/* Breathing room between the two display words so they don't collide.
+   BOOST used to have margin-bottom: -0.15em to bleed past the hero's
+   foot — but at the max clamp (440px) that's ~66px of overhang, and
+   the hero-pin's `overflow: hidden` was clipping the bottom of the
+   letters. Switched to a positive 20px so the whole stack sits 20px
+   above the bottom edge (lifts SPARKLING with it, since both words
+   live in the same flex-end column). */
+.display-stack--top { margin-bottom: 0.02em; }
+.display-stack--bottom { margin-bottom: 20px; }
+
+@media (max-width: 768px) {
+  .display-stack { font-size: clamp(64px, 20vw, 180px); }
+}
+
+/* ===== Stacked center-nav text ===== */
+
+.nav__center--stacked {
+  font-size: 12px;
+  line-height: 1.45;
+  letter-spacing: 0.14em;
+  opacity: 0.85;
+}
+
+/* ===== Scroll cue ===== */
+
+.scroll-cue {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: inherit;
+}
+
+.scroll-cue__icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scroll-cue__rule {
+  width: 1px;
+  height: 28px;
+  background: currentColor;
+  opacity: 0.6;
+}
+
+.scroll-cue__label {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* ===== Bottom meta row ===== */
+
+.meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items: end;
+  gap: 24px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.45;
+}
+
+.meta__left {
+  justify-self: start;
+}
+
+.meta__center {
+  justify-self: center;
+  text-align: center;
+}
+
+.meta__right {
+  justify-self: end;
+  text-align: right;
+}
+
+.meta__divider {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.meta__divider::before,
+.meta__divider::after {
+  content: "";
+  width: 24px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.55;
+}
+
+/* ===== CTA pill ===== */
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 22px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  transition: transform 0.2s ease;
+}
+
+.cta:hover { transform: translateY(-1px); }
+
+.section--about .cta {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* ===== Section 2: About grid ===== */
+
+.about-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 1fr) minmax(0, 0.9fr);
+  gap: 48px;
+  align-items: end;
+  padding: 32px 0;
+}
+
+.about-grid__spec {
+  grid-column: 3;
+}
+
+.about-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted-paper);
+  margin-bottom: 24px;
+}
+
+.about-body {
+  margin-top: 28px;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--muted-paper);
+  max-width: 480px;
+}
+
+.about-spec {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px 48px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-top: 1px solid rgba(244, 237, 224, 0.18);
+  padding-top: 28px;
+}
+
+.about-spec dt {
+  color: var(--paper);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.about-spec dd {
+  color: var(--muted-paper);
+  font-family: var(--display);
+  font-size: 28px;
+  letter-spacing: 0;
+}
+
+/* ===== Responsive ===== */
+
+@media (max-width: 768px) {
+  .section { padding: 18px 18px 24px; }
+  .nav { grid-template-columns: 1fr auto; }
+  .nav__center { display: none; }
+  .nav__links { gap: 16px; }
+  .display--hero { font-size: clamp(96px, 26vw, 200px); }
+  .display--about { font-size: clamp(64px, 18vw, 140px); }
+  .about-grid { grid-template-columns: 1fr; gap: 32px; }
+  .meta { grid-template-columns: 1fr; gap: 8px; text-align: left; }
+  .meta__center, .meta__right { justify-self: start; text-align: left; }
+}

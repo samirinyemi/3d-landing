@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Bowlby+One&family=Caveat:wght@500;700&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --red: #E5331F;
+  --ink: #0a0a0a;
+  --paper: #f4ede0;
+  --muted-ink: rgba(10, 10, 10, 0.62);
+  --muted-paper: rgba(244, 237, 224, 0.6);
+  --display: 'Anton', 'Helvetica Neue', Impact, sans-serif;
+  --sans: 'Hanken Grotesk', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  background: var(--red);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Hide the native browser scrollbar — Lenis handles scroll via wheel/
+     touch events, so the scrollbar UI isn't needed and just visually
+     interrupts the editorial layout. Wheel/touch/keyboard scroll all
+     keep working as normal. */
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* old IE / Edge */
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+#root::-webkit-scrollbar {
+  /* Chrome / Safari / new Edge */
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
