@@ -17,7 +17,14 @@
 .section {
   position: relative;
   z-index: 1;
+  /* 100vh on iOS Safari includes the area behind the address/tool bars,
+     which causes content anchored to the bottom (hero text, closer
+     wordmark) to hide under the chrome. 100dvh tracks the *visible*
+     viewport. Listing both with dvh second means older browsers fall
+     back to vh, newer ones use dvh — matches the user's "make each
+     section 100% viewport" intent without device-specific code. */
   min-height: 100vh;
+  min-height: 100dvh;
   padding: 28px 40px 36px;
   display: flex;
   flex-direction: column;
@@ -46,7 +53,13 @@
   position: sticky;
   top: 0;
   width: 100%;
+  /* Track the visible viewport on iOS Safari — see .section above for
+     why both vh and dvh are listed. The hero-pin is sticky at the top
+     of the viewport for the whole 300vh hero section, so getting its
+     height right is critical: too tall and the bottom text ("SPARKLING
+     / BOOST") falls behind the mobile browser chrome. */
   height: 100vh;
+  height: 100dvh;
   overflow: hidden; /* contains the bg + transitions */
   background: var(--red);
   padding: 28px 40px 36px;
@@ -197,8 +210,14 @@
   .hero-side__big { font-size: clamp(36px, 11vw, 80px); }
 
   /* Tighter horizontal padding so the photograph bleeds closer to the
-     screen edges and the headline can take up the full mobile width. */
-  .hero-pin { padding: 18px 18px 28px; gap: 16px; }
+     screen edges and the headline can take up the full mobile width.
+     Bottom padding combines a baseline (28px) with the iOS home-bar
+     safe-area inset so "SPARKLING / BOOST" never sits behind the
+     Safari toolbar or the gesture indicator. */
+  .hero-pin {
+    padding: 18px 18px calc(28px + env(safe-area-inset-bottom, 0px));
+    gap: 16px;
+  }
   /* Section default — used by CTA, flavors header, c1, c2, closer.
      Desktop's 40px gutter is too generous on a 375px viewport. */
   .section { padding: 24px 18px 28px; }
@@ -233,7 +252,11 @@
   position: sticky;
   top: 0;
   width: 100%;
+  /* dvh so the three-row mobile bento (LT 25vh / M 50vh / RT 25vh) fits
+     the visible viewport on iOS Safari without the bottom RT cell
+     hiding behind the browser chrome. */
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -252,6 +275,7 @@
   z-index: 1;
   padding: 28px 40px 36px;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -426,6 +450,7 @@
   background: var(--paper);
   color: var(--ink);
   min-height: 100vh;
+  min-height: 100dvh;
   padding: clamp(56px, 7vw, 96px) clamp(24px, 4vw, 64px);
   display: flex;
   flex-direction: column;
@@ -624,6 +649,7 @@
 .section.section--closer {
   position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   padding: 28px 40px 36px;
   color: var(--paper);
   overflow: hidden;
@@ -674,7 +700,11 @@
 .closer-meta { color: rgba(244, 237, 224, 0.78); }
 
 @media (max-width: 768px) {
-  .section.section--closer { padding: 24px 20px 28px; }
+  /* Same safe-area treatment as the hero so the bottom-anchored
+     "DRINK / SIGNAL" stack clears the iOS toolbar/home indicator. */
+  .section.section--closer {
+    padding: 24px 20px calc(28px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* ===== Bento grid — sharp corners, black gaps, SOMPOWER-style ===== */
@@ -999,7 +1029,11 @@
      interpolates vertically instead of horizontally. */
   .bento {
     grid-template-columns: 1fr;
+    /* dvh on iOS so the three cells track the visible viewport — vh
+       fallback for older browsers. Same total of 100, just measured
+       against the dynamic height. */
     grid-template-rows: 25vh 50vh 25vh;
+    grid-template-rows: 25dvh 50dvh 25dvh;
     gap: 4px;
   }
   .bento__cell--lt { grid-column: 1; grid-row: 1; }
