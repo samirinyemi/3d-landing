@@ -32,14 +32,6 @@ export default function App() {
   // photo grows subtly as the user scrolls through the 300vh pinned
   // hero, then reverts at lap wrap when localP returns to 0.
   const heroBgRef = useRef(null);
-  // The hero and closer both play the SAME background video. They're
-  // separate <video> elements in the DOM (one stays put inside the
-  // sticky hero-pin, the other lives at the bottom of the page), but a
-  // periodic sync below pins their currentTime together so when the
-  // infinite scroll wraps from closer → hero the user sees the exact
-  // same frame on both sides of the seam.
-  const heroVideoRef = useRef(null);
-  const closerVideoRef = useRef(null);
   const [heroState, setHeroState] = useState(0);
   const [ctaRef, ctaInView] = useInView(0.25, lap);
   const [flavorsRef, flavorsInView] = useInView(0.15, lap);
@@ -185,33 +177,6 @@ export default function App() {
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  // ----- Hero + closer video sync -----
-  // The hero's background video and the closer's background video are
-  // separate <video> elements (they're not the same DOM node, so the
-  // browser plays them as two independent media tracks). To make the
-  // infinite-scroll wrap visually seamless, the closer's playback head
-  // must always match the hero's — otherwise the user crosses the seam
-  // and sees the same video jump to a different frame.
-  //
-  // Strategy: every 400ms, copy `heroVideo.currentTime` onto the
-  // closer. We only correct when drift is > 80ms to avoid stuttering
-  // the closer playback from a too-aggressive seek. Both videos use
-  // autoplay/muted/loop/playsInline so iOS Safari starts them on its
-  // own; the sync interval just keeps them locked together over time.
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const hero = heroVideoRef.current;
-      const closer = closerVideoRef.current;
-      if (!hero || !closer) return;
-      if (hero.readyState < 2 || closer.readyState < 2) return;
-      const drift = Math.abs(closer.currentTime - hero.currentTime);
-      if (drift > 0.08) {
-        closer.currentTime = hero.currentTime;
-      }
-    }, 400);
-    return () => clearInterval(interval);
-  }, []);
-
   // ----- Lap-aware delay schedule for the hero text/meta -----
   // On first page load (lap 0) we want the cinematic opening — the photo
   // sits for a beat, then "SPARKLING" masks in, then "BOOST" follows, then
@@ -294,22 +259,7 @@ export default function App() {
               its entry reveal animation. Wrapping isolates the two
               transforms so they compose cleanly. */}
           <div className="hero-bg-zoom" ref={heroBgRef} aria-hidden>
-            <div className="hero-bg">
-              {/* Background video — autoplay/muted/playsInline required
-                  for iOS Safari to start playback without user input.
-                  Same src as the closer's video so a periodic sync in
-                  App's useEffect keeps both playback heads aligned. */}
-              <video
-                ref={heroVideoRef}
-                className="hero-video"
-                src="/hero-bg.mp4"
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="auto"
-              />
-            </div>
+            <div className="hero-bg" />
           </div>
 
           {/* ---- State 0 — opening "SPARKLING / BOOST" ---- */}
@@ -532,22 +482,6 @@ export default function App() {
 
       {/* ===== Section 5 · Closer — gradient + film grain + return-to-hero typography ===== */}
       <section ref={closerRef} className="section section--closer">
-        {/* Background video — paired with the hero video via a sync
-            useEffect in App so both playback heads match. When the
-            infinite scroll wraps from the bottom of this section back
-            to the top of the hero, the two videos are on the same
-            frame, so the seam crossing reads as one continuous shot. */}
-        <video
-          ref={closerVideoRef}
-          className="closer-video"
-          src="/hero-bg.mp4"
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="auto"
-          aria-hidden
-        />
         {/* SVG film grain overlay — feTurbulence noise tinted dark, blended
             on top via mix-blend-mode for an analog, gritty texture without
             shipping a noise image. */}

@@ -125,28 +125,11 @@
 .hero-bg {
   position: absolute;
   inset: 0;
-  /* Static fallback background — shown for the few hundred ms before
-     the video element has decoded and started playing. Same image as
-     the closer-heroback so the wrap loop reads as one shot even if a
-     user lands during the very first frame. */
+  /* No gradient overlay — must match .closer-heroback exactly so the
+     wrap-around shows pure photograph on both sides of the boundary. */
   background: url("/hero-bg.png") center / cover no-repeat;
   animation: heroBgReveal 1.5s cubic-bezier(0.22, 1, 0.36, 1) both;
   will-change: opacity, filter, transform;
-  overflow: hidden;
-}
-
-/* Hero + closer background video — full-cover, object-fit:cover so a
-   landscape source crops to fill the portrait/landscape viewport
-   without distortion. Behind any text content via z-index 0. */
-.hero-video,
-.closer-video {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 0;
-  pointer-events: none;
 }
 
 /* Single continuous interpolation — all properties animate together with the
@@ -703,8 +686,9 @@
   padding: 28px 40px 36px;
   color: var(--paper);
   overflow: hidden;
-  /* Static fallback in case the closer-video can't decode (offline, codec
-     issue). The .closer-video element layers above this at z-index 0. */
+  /* Hero photograph — the closer's background IS the same image as
+     the hero, so the infinite-scroll wrap reads as one continuous
+     shot with only the text changing across the boundary. */
   background: url("/hero-bg.png") center / cover no-repeat;
   display: flex;
   flex-direction: column;
