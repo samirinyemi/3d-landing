@@ -4,6 +4,8 @@ import { Environment } from "@react-three/drei";
 import Lenis from "lenis";
 import Can from "./Can";
 import BentoSection from "./BentoSection";
+import SoundToggle from "./SoundToggle";
+import CustomCursor from "./CustomCursor";
 import { MaskedWord, Line, useInView } from "./Reveal";
 import "./App.css";
 
@@ -30,6 +32,14 @@ export default function App() {
   // photo grows subtly as the user scrolls through the 300vh pinned
   // hero, then reverts at lap wrap when localP returns to 0.
   const heroBgRef = useRef(null);
+  // The hero and closer both play the SAME background video. They're
+  // separate <video> elements in the DOM (one stays put inside the
+  // sticky hero-pin, the other lives at the bottom of the page), but a
+  // periodic sync below pins their currentTime together so when the
+  // infinite scroll wraps from closer → hero the user sees the exact
+  // same frame on both sides of the seam.
+  const heroVideoRef = useRef(null);
+  const closerVideoRef = useRef(null);
   const [heroState, setHeroState] = useState(0);
   const [ctaRef, ctaInView] = useInView(0.25, lap);
   const [flavorsRef, flavorsInView] = useInView(0.15, lap);
@@ -41,6 +51,19 @@ export default function App() {
   const [c2Ref, c2InView] = useInView(0.22, lap); // Stockists
 
   useEffect(() => {
+    // ----- Force every page load to start at the hero -----
+    // By default browsers restore the previous scroll position on
+    // refresh (and hard refresh on some browsers), so a user who was
+    // mid-bento would re-land mid-bento on reload — the cinematic
+    // hero intro never plays. Disabling scrollRestoration tells the
+    // browser to stop doing that; the immediate `scrollTo(0, 0)`
+    // sweeps any pre-Lenis scroll back to the top before Lenis takes
+    // over. Lenis itself initialises from scrollY=0 from that point.
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+    window.scrollTo(0, 0);
+
     const lenis = new Lenis({
       // lerp-mode for buttery-smooth, continuous easing on every input frame
       lerp: 0.08,
@@ -162,6 +185,33 @@ export default function App() {
     return () => cancelAnimationFrame(raf);
   }, []);
 
+  // ----- Hero + closer video sync -----
+  // The hero's background video and the closer's background video are
+  // separate <video> elements (they're not the same DOM node, so the
+  // browser plays them as two independent media tracks). To make the
+  // infinite-scroll wrap visually seamless, the closer's playback head
+  // must always match the hero's — otherwise the user crosses the seam
+  // and sees the same video jump to a different frame.
+  //
+  // Strategy: every 400ms, copy `heroVideo.currentTime` onto the
+  // closer. We only correct when drift is > 80ms to avoid stuttering
+  // the closer playback from a too-aggressive seek. Both videos use
+  // autoplay/muted/loop/playsInline so iOS Safari starts them on its
+  // own; the sync interval just keeps them locked together over time.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const hero = heroVideoRef.current;
+      const closer = closerVideoRef.current;
+      if (!hero || !closer) return;
+      if (hero.readyState < 2 || closer.readyState < 2) return;
+      const drift = Math.abs(closer.currentTime - hero.currentTime);
+      if (drift > 0.08) {
+        closer.currentTime = hero.currentTime;
+      }
+    }, 400);
+    return () => clearInterval(interval);
+  }, []);
+
   // ----- Lap-aware delay schedule for the hero text/meta -----
   // On first page load (lap 0) we want the cinematic opening — the photo
   // sits for a beat, then "SPARKLING" masks in, then "BOOST" follows, then
@@ -181,6 +231,11 @@ export default function App() {
 
   return (
     <div className="app">
+      {/* Difference-blend follow cursor — one small dot tracking the
+          OS pointer, layered above everything via z-index so it stays
+          visible across the whole site. */}
+      <CustomCursor />
+
       {/* Fixed 3D stage — stays put as the page scrolls */}
       <div className="canvas-stage">
         <Canvas
@@ -214,6 +269,9 @@ export default function App() {
           <Line delay={0.22}>MADE TO MOVE</Line>
         </div>
         <nav className="nav__links">
+          {/* Ambient sound toggle — synthesizes a quiet Web Audio pad
+              on first click. No file shipped, no auto-play surprise. */}
+          <SoundToggle />
           <a href="#">
             <Line delay={0.3} display="inline-flex">
               Menu <span className="nav__brand-mark" />
@@ -236,7 +294,22 @@ export default function App() {
               its entry reveal animation. Wrapping isolates the two
               transforms so they compose cleanly. */}
           <div className="hero-bg-zoom" ref={heroBgRef} aria-hidden>
-            <div className="hero-bg" />
+            <div className="hero-bg">
+              {/* Background video — autoplay/muted/playsInline required
+                  for iOS Safari to start playback without user input.
+                  Same src as the closer's video so a periodic sync in
+                  App's useEffect keeps both playback heads aligned. */}
+              <video
+                ref={heroVideoRef}
+                className="hero-video"
+                src="/hero-bg.mp4"
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="auto"
+              />
+            </div>
           </div>
 
           {/* ---- State 0 — opening "SPARKLING / BOOST" ---- */}
@@ -459,6 +532,22 @@ export default function App() {
 
       {/* ===== Section 5 · Closer — gradient + film grain + return-to-hero typography ===== */}
       <section ref={closerRef} className="section section--closer">
+        {/* Background video — paired with the hero video via a sync
+            useEffect in App so both playback heads match. When the
+            infinite scroll wraps from the bottom of this section back
+            to the top of the hero, the two videos are on the same
+            frame, so the seam crossing reads as one continuous shot. */}
+        <video
+          ref={closerVideoRef}
+          className="closer-video"
+          src="/hero-bg.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          aria-hidden
+        />
         {/* SVG film grain overlay — feTurbulence noise tinted dark, blended
             on top via mix-blend-mode for an analog, gritty texture without
             shipping a noise image. */}

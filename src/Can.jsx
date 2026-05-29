@@ -856,10 +856,16 @@ export default function Can({ scrollProgress, scrollCycles, introKey = 0 }) {
 
   return (
     <group ref={group}>
-      {/* Body — wears the printed PNG label. Texture offset.x = 0.5 lines up
-          the image centre with the camera-facing +Z direction. */}
+      {/* Body — wears the printed PNG label on its SIDE WALL ONLY.
+          openEnded=true (last arg) removes the top + bottom disc caps
+          on the cylinder geometry. Without this, the same label
+          texture wraps onto the bottom disc, which becomes visible
+          whenever the can tilts up — making the inside of the can
+          look "wallpapered" with the front-of-label artwork. The
+          metal lathe meshes (topGeo + bottomGeo) already close the
+          top and bottom, so the open ends are never seen as holes. */}
       <mesh castShadow receiveShadow>
-        <cylinderGeometry args={[0.55, 0.55, 2.2, 96, 1, false]} />
+        <cylinderGeometry args={[0.55, 0.55, 2.2, 96, 1, true]} />
         <meshStandardMaterial
           map={labelMap}
           metalness={0.05}

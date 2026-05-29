@@ -5,6 +5,39 @@
   width: 100%;
 }
 
+/* ===== Difference-blend follow cursor =====
+   A 14px black dot that follows the OS pointer. `mix-blend-mode:
+   difference` inverts whatever pixel is behind it — so against a
+   black surface the dot reads white, against white it reads black,
+   and against the brand red it lands somewhere in the cyan/teal
+   family. The native OS cursor is left visible underneath so all
+   normal interactions still work; this is purely additive. */
+.custom-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  pointer-events: none;
+  /* Top of the stacking order — has to sit above the 3D canvas
+     (z-index 80), the top nav (100), and anything else. */
+  z-index: 99999;
+  mix-blend-mode: difference;
+  will-change: transform;
+  /* Start off-screen — JS seeds the real position on first
+     pointermove, so this prevents a flash at (0, 0) on mount. */
+  transform: translate3d(-100px, -100px, 0);
+}
+
+/* Coarse pointers = touchscreens / styluses where the OS pointer
+   isn't continuously visible. Hide the dot — there's nothing to
+   follow. */
+@media (pointer: coarse), (hover: none) {
+  .custom-cursor { display: none; }
+}
+
 /* Sticky 3D canvas — stays above scrolling content. High z-index so the
    can(s) always render on top of section overlays (CTA + flavors). */
 .canvas-stage {
@@ -92,11 +125,28 @@
 .hero-bg {
   position: absolute;
   inset: 0;
-  /* No gradient overlay — must match .closer-heroback exactly so the
-     wrap-around shows pure photograph on both sides of the boundary. */
+  /* Static fallback background — shown for the few hundred ms before
+     the video element has decoded and started playing. Same image as
+     the closer-heroback so the wrap loop reads as one shot even if a
+     user lands during the very first frame. */
   background: url("/hero-bg.png") center / cover no-repeat;
   animation: heroBgReveal 1.5s cubic-bezier(0.22, 1, 0.36, 1) both;
   will-change: opacity, filter, transform;
+  overflow: hidden;
+}
+
+/* Hero + closer background video — full-cover, object-fit:cover so a
+   landscape source crops to fill the portrait/landscape viewport
+   without distortion. Behind any text content via z-index 0. */
+.hero-video,
+.closer-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  pointer-events: none;
 }
 
 /* Single continuous interpolation — all properties animate together with the
@@ -653,6 +703,8 @@
   padding: 28px 40px 36px;
   color: var(--paper);
   overflow: hidden;
+  /* Static fallback in case the closer-video can't decode (offline, codec
+     issue). The .closer-video element layers above this at z-index 0. */
   background: url("/hero-bg.png") center / cover no-repeat;
   display: flex;
   flex-direction: column;
@@ -1210,6 +1262,29 @@
 }
 
 .nav__links a:hover {
+  opacity: 0.7;
+}
+
+/* Sound toggle — flat icon button. No background, no border, no ring.
+   Sits inline on the nav baseline next to the Menu link. Inherits
+   `color` from the nav (blended via `mix-blend-mode: difference` on
+   .top-nav) so the icon always reads against whatever's behind it. */
+.sound-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  line-height: 0;       /* prevents the button from taking on the
+                           nav's default line-height and adding stray
+                           vertical space above/below the icon */
+  transition: opacity 0.18s ease;
+}
+.sound-toggle:hover {
   opacity: 0.7;
 }
 
