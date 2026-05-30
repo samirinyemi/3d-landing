@@ -127,7 +127,7 @@
   inset: 0;
   /* No gradient overlay — must match .closer-heroback exactly so the
      wrap-around shows pure photograph on both sides of the boundary. */
-  background: url("/hero-bg.png") center / cover no-repeat;
+  background: url("/hero-bg.jpg") center / cover no-repeat;
   animation: heroBgReveal 1.5s cubic-bezier(0.22, 1, 0.36, 1) both;
   will-change: opacity, filter, transform;
 }
@@ -689,7 +689,7 @@
   /* Hero photograph — the closer's background IS the same image as
      the hero, so the infinite-scroll wrap reads as one continuous
      shot with only the text changing across the boundary. */
-  background: url("/hero-bg.png") center / cover no-repeat;
+  background: url("/hero-bg.jpg") center / cover no-repeat;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
