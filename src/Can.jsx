@@ -645,7 +645,7 @@ function useCanCaps() {
    =================================================================== */
 export default function Can({ scrollProgress, scrollCycles, introKey = 0 }) {
   const group = useRef();
-  const labelMap = useTexture("/can-label.png", (tex) => {
+  const labelMap = useTexture("/can-label.webp", (tex) => {
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 16;
     tex.wrapS = THREE.RepeatWrapping;

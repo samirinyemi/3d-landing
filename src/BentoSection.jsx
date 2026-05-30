@@ -20,8 +20,8 @@ import { useEffect, useRef, useState } from "react";
    =================================================================== */
 
 const STATIC = {
-  lb: "/bento-row.jpg",
-  rb: "/bento-portrait.jpg",
+  lb: "/bento-row.webp",
+  rb: "/bento-portrait.webp",
 };
 
 /* Per-slide color theme for the top-left and top-right cells. Peripheral
@@ -34,7 +34,7 @@ const SLIDES = [
   {
     title: "Quiet\nStimulant.",
     accent: "Loud Results.",
-    m: "/bento-slide-1.jpg",
+    m: "/bento-slide-1.webp",
     eyebrow: "— The Formula",
     body: [
       "L-theanine, organic green coffee,",
@@ -47,7 +47,7 @@ const SLIDES = [
   {
     title: "Real\nEnergy.",
     accent: "No Crash.",
-    m: "/slide-energy.jpg",
+    m: "/slide-energy.webp",
     eyebrow: "— Sustained focus",
     body: [
       "80 mg of natural caffeine",
@@ -60,7 +60,7 @@ const SLIDES = [
   {
     title: "Sharpen.",
     accent: "The Mind.",
-    m: "/slide-clarity.jpg",
+    m: "/slide-clarity.webp",
     eyebrow: "— Nootropic infused",
     body: [
       "L-theanine smooths the edge.",
@@ -73,7 +73,7 @@ const SLIDES = [
   {
     title: "Find.",
     accent: "Your Flow.",
-    m: "/slide-flow.jpg",
+    m: "/slide-flow.webp",
     eyebrow: "— Plant powered",
     body: [
       "Sparkling Tahitian lime",
@@ -86,7 +86,7 @@ const SLIDES = [
   {
     title: "The Daily.",
     accent: "Signal.",
-    m: "/slide-signal.jpg",
+    m: "/slide-signal.webp",
     eyebrow: "— Find yours",
     body: [
       "Independent grocers in South Australia",

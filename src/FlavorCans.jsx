@@ -21,7 +21,7 @@ function smoothstep(a, b, x) {
 function FlavorCan({ target, scrollProgress }) {
   const groupRef = useRef();
   const matRefs = useRef([]);
-  const label = useTexture("/can-label.png", (t) => {
+  const label = useTexture("/can-label.webp", (t) => {
     t.colorSpace = THREE.SRGBColorSpace;
     t.wrapS = THREE.RepeatWrapping;
     t.anisotropy = 8;
