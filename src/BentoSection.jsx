@@ -194,17 +194,21 @@ export default function BentoSection() {
     if (expand < 0.4 && textShown) setTextShown(false);
   }, [expand, textShown]);
 
-  // Preload all M-cell images at mount so transitions never have to
-  // wait on a JPG decode. Each <img new Image()> caches the file at
-  // the browser layer; subsequent <img src=…> renders display instantly.
+  // Preload + fully decode all M-cell images at mount. Plain
+  // `new Image(); img.src = m` only fetches the bytes; the JPG/WebP
+  // decode still happens at the moment the <img> first renders,
+  // which can stall the compositor on a slide swap. `img.decode()`
+  // performs the decode up front so the swap is paint-ready.
   useEffect(() => {
-    SLIDES.forEach(({ m }) => {
+    const sources = [...SLIDES.map((s) => s.m), STATIC.lb, STATIC.rb];
+    sources.forEach((src) => {
       const img = new Image();
-      img.src = m;
-    });
-    [STATIC.lb, STATIC.rb].forEach((src) => {
-      const img = new Image();
+      img.decoding = "async";
       img.src = src;
+      // .decode() returns a promise — fire-and-forget; if the browser
+      // doesn't support it, the fallback is still the byte-cached path
+      // we had before.
+      if (img.decode) img.decode().catch(() => {});
     });
   }, []);
 
@@ -386,7 +390,16 @@ export default function BentoSection() {
                   directionRef.current === "backward" ? "down" : "up"
                 }`}
               >
-                <img src={previousSrc} alt="" className="m-img" style={imgScaleStyle} />
+                <img
+                  src={previousSrc}
+                  alt=""
+                  className="m-img"
+                  style={imgScaleStyle}
+                  /* Off-main-thread decode so swapping slides while the
+                     user is mid-scroll doesn't block the compositor. */
+                  decoding="async"
+                  fetchPriority="high"
+                />
               </div>
             )}
             {/* IN — current slide. Enters from BELOW the cell when the
@@ -400,7 +413,14 @@ export default function BentoSection() {
                 directionRef.current === "backward" ? "down" : "up"
               }`}
             >
-              <img src={currentSrc} alt="" className="m-img" style={imgScaleStyle} />
+              <img
+                src={currentSrc}
+                alt=""
+                className="m-img"
+                style={imgScaleStyle}
+                decoding="async"
+                fetchPriority="high"
+              />
             </div>
 
             {/* Post-expansion tagline — slides up line-by-line once the

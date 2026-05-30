@@ -777,29 +777,32 @@ export default function Can({ scrollProgress, scrollCycles, introKey = 0 }) {
     //   bento expansion starts at progress 0.612 (page 780vh of 1275vh max)
     //   flavors bottom trigger lands at progress ~0.774 (page 987vh)
     //
-    // Exit window is tight (0.61→0.65) — bento expansion is a fast moment
-    // and we want the can out of the way quickly. Re-entry window is
-    // intentionally MUCH wider (0.73→0.88) so the can settles back into
-    // place gradually as the user scrolls through C1/C2 rather than
-    // snapping in at the top of flavors. The drop position and recovery
-    // spin both ease back over that wider range, which reads as natural
-    // physical motion instead of a pop.
+    // Both windows are now MUCH wider than before so neither the exit
+    // nor the return feels rushed:
+    //   exit  0.57 → 0.66 (~9% of page progress, was 4%)
+    //   entry 0.71 → 0.92 (~21% of page progress, was 15%)
+    // Combined with a shorter drop (4 instead of 6) and a smaller
+    // recovery spin (π/2 instead of π), the can has less ground to
+    // cover and more scroll-distance to cover it — that's what reads
+    // as "smooth" rather than "snappy" or "glitchy".
     //
-    // MOBILE: the bento is laid out as three stacked cells (title /
-    // image / body) inside a 100vh sticky pin, and the 3D can hovering
-    // over those cells crowds the read. So on mobile the can hides for
-    // the WHOLE bento — from the moment the section reaches the top of
-    // the viewport (p ≈ 0.235) through the expansion and the gap before
-    // C1. Same wider re-entry window so it settles back in naturally.
+    // MOBILE: hides through the entire bento as before, but with the
+    // same widened entry window so the return into C1/C2/closer feels
+    // gradual.
     const isMobile =
       typeof window !== "undefined" && window.innerWidth <= 768;
-    const exitStart = isMobile ? 0.22 : 0.61;
-    const exitEnd   = isMobile ? 0.27 : 0.65;
+    const exitStart = isMobile ? 0.21 : 0.57;
+    const exitEnd   = isMobile ? 0.30 : 0.66;
     const hideMid =
-      smoothstep(exitStart, exitEnd, p) - smoothstep(0.73, 0.88, p);
+      smoothstep(exitStart, exitEnd, p) - smoothstep(0.71, 0.92, p);
     const hide = Math.min(1, hideMid);
-    const hideDrop = -hide * 6;
-    const hideSpin = hide * Math.PI * 3;
+    // Shorter drop — the can only has to fall ~4 world units to be off
+    // the viewport, so 6 was overkill. Less travel = less to ease.
+    const hideDrop = -hide * 4;
+    // Recovery spin trimmed to π/2 (90°). Combined with the wider
+    // window, the rotation feels like a gentle quarter-turn back into
+    // upright rather than a whirl.
+    const hideSpin = hide * (Math.PI / 2);
     // NOTE: no closer-exit drop. The can stays at its scroll-driven position
     // through the very end of the closer, so when the infinite-scroll wrap
     // fires and the scroll resets to ~0, the can is at the same y/rotation

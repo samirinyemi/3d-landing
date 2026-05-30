@@ -803,7 +803,14 @@
   inset: 0;
   width: 100%;
   height: 100%;
+  /* Force every slide wrapper onto its own compositor layer so the
+     per-frame translateY runs on the GPU thread, not the main thread.
+     translate3d(0,0,0) baseline + will-change + hidden backface is the
+     standard combination that prevents the "first frame stutter" when
+     a new animation kicks in. */
+  transform: translate3d(0, 0, 0);
   will-change: transform;
+  backface-visibility: hidden;
 }
 
 .bento__cell--m .m-img {
@@ -817,14 +824,17 @@
 }
 
 /* Up-reel: scrolling DOWN through bento. New image enters from below,
-   old image is pushed off the top. */
+   old image is pushed off the top.
+   Easing changed from cubic-bezier(0.22, 0.61, 0.36, 1) to the
+   standard out-cubic (0.33, 1, 0.68, 1) which has a softer landing
+   and reads as more "physical reel" than "snappy slide". */
 .bento__cell--m .m-img-slide--in-up {
   z-index: 2;
-  animation: mImgInUp 0.85s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  animation: mImgInUp 0.9s cubic-bezier(0.33, 1, 0.68, 1) forwards;
 }
 .bento__cell--m .m-img-slide--out-up {
   z-index: 1;
-  animation: mImgOutUp 0.85s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  animation: mImgOutUp 0.9s cubic-bezier(0.33, 1, 0.68, 1) forwards;
 }
 
 /* Down-reel: scrolling UP through bento. New image enters from above,
@@ -832,17 +842,21 @@
    direction so the reel always feels physically consistent. */
 .bento__cell--m .m-img-slide--in-down {
   z-index: 2;
-  animation: mImgInDown 0.85s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  animation: mImgInDown 0.9s cubic-bezier(0.33, 1, 0.68, 1) forwards;
 }
 .bento__cell--m .m-img-slide--out-down {
   z-index: 1;
-  animation: mImgOutDown 0.85s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  animation: mImgOutDown 0.9s cubic-bezier(0.33, 1, 0.68, 1) forwards;
 }
 
-@keyframes mImgInUp   { from { transform: translateY(100%); }  to { transform: translateY(0%); } }
-@keyframes mImgOutUp  { from { transform: translateY(0%); }    to { transform: translateY(-100%); } }
-@keyframes mImgInDown { from { transform: translateY(-100%); } to { transform: translateY(0%); } }
-@keyframes mImgOutDown{ from { transform: translateY(0%); }    to { transform: translateY(100%); } }
+/* translate3d (not plain translateY) keeps the property on the
+   compositor — plain translateY can drop the element off its GPU
+   layer mid-animation on some browsers, which is exactly what causes
+   the "first-frame hitch" that reads as not-smooth. */
+@keyframes mImgInUp   { from { transform: translate3d(0,  100%, 0); } to { transform: translate3d(0,    0%, 0); } }
+@keyframes mImgOutUp  { from { transform: translate3d(0,    0%, 0); } to { transform: translate3d(0, -100%, 0); } }
+@keyframes mImgInDown { from { transform: translate3d(0, -100%, 0); } to { transform: translate3d(0,    0%, 0); } }
+@keyframes mImgOutDown{ from { transform: translate3d(0,    0%, 0); } to { transform: translate3d(0,  100%, 0); } }
 
 /* ===== M-cell post-expansion tagline ===== */
 .m-text {
